@@ -1,0 +1,361 @@
+&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;zh-HK&quot;&gt;
+&lt;head&gt;
+  &lt;meta charset=&quot;UTF-8&quot; /&gt;
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot; /&gt;
+  &lt;title&gt;Pokémon 儲錢小精靈記帳本&lt;/title&gt;
+  &lt;script src=&quot;\[suspicious link removed\]&quot;&gt;&lt;/script&gt;
+  &lt;script src=&quot;https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js&quot;&gt;&lt;/script&gt;
+  &lt;script src=&quot;https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js&quot;&gt;&lt;/script&gt;
+  &lt;style&gt;
+    body {
+      font-family: &#39;Noto Sans TC&#39;, system-ui, -apple-system, sans-serif;
+      background: linear-gradient(180deg, #7dd3fc 0%, #bae6fd 35%, #bbf7d0 70%, #86efac 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.93);
+      border: 3px solid #ffffff;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.14);
+    }
+    .poke-btn { transition: transform 0.12s ease; }
+    .poke-btn:active { transform: scale(0.96); }
+    .pokeball-icon {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #ef4444 0%, #ef4444 46%, #1f2937 46%, #1f2937 54%, #ffffff 54%, #ffffff 100%);
+      border: 2px solid #1f2937;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .pokeball-icon::after {
+      content: &#39;&#39;;
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      background: #ffffff;
+      border: 2px solid #1f2937;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body class=&quot;text-slate-800 p-3 sm:p-5&quot;&gt;
+  &lt;div id=&quot;toast&quot; class=&quot;fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden px-4 py-2.5 rounded-2xl bg-slate-900 text-white font-bold shadow-xl text-sm flex items-center gap-2&quot;&gt;
+    &lt;span class=&quot;pokeball-icon&quot;&gt;&lt;/span&gt;
+    &lt;span id=&quot;toastText&quot;&gt;&lt;/span&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;max-w-4xl mx-auto space-y-4&quot;&gt;
+    &lt;!-- 頂部訓練員橫幅 --&gt;
+    &lt;header class=&quot;glass-card rounded-3xl p-4&quot;&gt;
+      &lt;div class=&quot;flex flex-col sm:flex-row sm:items-center justify-between gap-3&quot;&gt;
+        &lt;div&gt;
+          &lt;div class=&quot;flex items-center gap-2&quot;&gt;
+            &lt;span class=&quot;pokeball-icon&quot;&gt;&lt;/span&gt;
+            &lt;h1 class=&quot;text-xl sm:text-2xl font-black text-slate-900&quot;&gt;Pokémon 儲錢小精靈記帳本&lt;/h1&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;flex flex-wrap items-center gap-2 mt-1.5&quot;&gt;
+            &lt;span class=&quot;text-sm font-bold text-slate-700&quot;&gt;訓練員：&lt;span id=&quot;trainerNameDisplay&quot; class=&quot;text-blue-700&quot;&gt;小智二世&lt;/span&gt;&lt;/span&gt;
+            &lt;button id=&quot;editNameBtn&quot; type=&quot;button&quot; class=&quot;text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700&quot;&gt;改名&lt;/button&gt;
+            &lt;span id=&quot;rankBadge&quot; class=&quot;text-xs font-black px-3 py-0.5 rounded-full bg-amber-300 text-amber-950&quot;&gt;Lv.1 新手訓練員&lt;/span&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;mt-2 w-full max-w-xs&quot;&gt;
+            &lt;div class=&quot;flex justify-between text-xs font-bold text-slate-600 mb-0.5&quot;&gt;
+              &lt;span&gt;儲錢經驗值 (XP)&lt;/span&gt;
+              &lt;span id=&quot;xpText&quot;&gt;35 / 100 XP&lt;/span&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;w-full h-3 bg-slate-200 rounded-full overflow-hidden border border-slate-300&quot;&gt;
+              &lt;div id=&quot;xpBar&quot; class=&quot;h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500&quot; style=&quot;width: 35%&quot;&gt;&lt;/div&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;flex items-center gap-2&quot;&gt;
+          &lt;div class=&quot;bg-amber-50 border-2 border-amber-200 rounded-2xl px-3 py-1.5 text-center&quot;&gt;
+            &lt;div class=&quot;text-[11px] font-bold text-amber-800&quot;&gt;精靈球徽章&lt;/div&gt;
+            &lt;div id=&quot;badgeLabel&quot; class=&quot;text-sm font-black text-amber-950&quot;&gt;紅白精靈球&lt;/div&gt;
+          &lt;/div&gt;
+          &lt;button id=&quot;resetDemoBtn&quot; type=&quot;button&quot; class=&quot;poke-btn px-3 py-2 rounded-2xl bg-rose-50 hover:bg-rose-100 border-2 border-rose-200 text-rose-700 text-sm font-bold&quot;&gt;重設&lt;/button&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/header&gt;
+
+    <!-- 三大核心數字 -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="glass-card rounded-3xl p-4 border-l-8 border-l-amber-400">
+        <p class="text-xs font-bold text-slate-500">⚡ 比卡超零用錢銀包</p>
+        <p id="walletBalance" class="text-3xl font-black text-slate-900 mt-1">$40</p>
+      </div>
+      <div class="glass-card rounded-3xl p-4 border-l-8 border-l-teal-500">
+        <p class="text-xs font-bold text-slate-500">💤 卡比獸秘密儲錢罐</p>
+        <p id="savingsBalance" class="text-3xl font-black text-teal-700 mt-1">$60</p>
+      </div>
+      <div class="glass-card rounded-3xl p-4 border-l-8 border-l-sky-500">
+        <p class="text-xs font-bold text-slate-500">🐢 車厘龜總財富</p>
+        <p id="totalWealth" class="text-3xl font-black text-sky-700 mt-1">$100</p>
+      </div>
+    </section>
+
+    <!-- 夢想寶物目標 -->
+    <section class="glass-card rounded-3xl p-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+        <div>
+          <h2 class="text-lg font-black text-slate-900">🎯 夢想寶物：<span id="goalNameText" class="text-rose-600">Pokémon 卡牌禮盒</span></h2>
+          <p class="text-xs font-bold text-slate-600">目標：<span id="goalTargetText">$120</span> ｜ 仲差：<span id="goalRemainingText" class="text-amber-600">$60</span></p>
+        </div>
+        <div class="flex gap-2">
+          <button id="transferToGoalBtn" type="button" class="poke-btn px-3.5 py-2 rounded-2xl bg-teal-500 hover:bg-teal-600 text-white font-black text-xs sm:text-sm">💰 存 $10 入儲錢罐</button>
+          <button id="editGoalBtn" type="button" class="poke-btn px-3 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm">✏️ 改目標</button>
+        </div>
+      </div>
+      <div class="w-full h-6 bg-slate-200 rounded-full overflow-hidden border-2 border-slate-300">
+        <div id="goalProgressBar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-500 transition-all duration-500 flex items-center justify-end pr-2" style="width: 50%">
+          <span id="goalPercentText" class="text-xs font-black text-white">50%</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 記帳機 + 圖表 -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <section class="lg:col-span-7 glass-card rounded-3xl p-4 space-y-3">
+        <h2 class="text-lg font-black text-slate-900">📝 今日記一記</h2>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="typeIncomeBtn" type="button" class="poke-btn py-2.5 rounded-2xl font-black text-sm border-2 border-emerald-500 bg-emerald-500 text-white">➕ 收到錢 (正電)</button>
+          <button id="typeExpenseBtn" type="button" class="poke-btn py-2.5 rounded-2xl font-black text-sm border-2 border-slate-200 bg-slate-100 text-slate-700">➖ 洗咗錢 (負電)</button>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" data-quick-amt="5" class="quick-amt-btn poke-btn px-3 py-1.5 rounded-xl bg-amber-100 text-amber-900 font-black text-xs border border-amber-300">+$5</button>
+          <button type="button" data-quick-amt="10" class="quick-amt-btn poke-btn px-3 py-1.5 rounded-xl bg-amber-100 text-amber-900 font-black text-xs border border-amber-300">+$10</button>
+          <button type="button" data-quick-amt="20" class="quick-amt-btn poke-btn px-3 py-1.5 rounded-xl bg-amber-100 text-amber-900 font-black text-xs border border-amber-300">+$20</button>
+          <button type="button" data-quick-amt="50" class="quick-amt-btn poke-btn px-3 py-1.5 rounded-xl bg-amber-100 text-amber-900 font-black text-xs border border-amber-300">+$50</button>
+        </div>
+        <div class="flex gap-2">
+          <input id="amountInput" type="number" min="1" step="1" placeholder="金額 $" class="w-28 px-3 py-2 rounded-2xl border-2 border-slate-300 font-black bg-white" />
+          <input id="noteInput" type="text" maxlength="24" placeholder="寫低咩事 (例如：買擦膠)" class="flex-1 px-3 py-2 rounded-2xl border-2 border-slate-300 font-bold bg-white text-sm" />
+        </div>
+        <div id="categoryGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+        <div id="needWantBox" class="hidden bg-amber-50 border-2 border-amber-300 rounded-2xl p-2.5 space-y-2">
+          <p class="text-xs font-black text-amber-950">⚡ 比卡超問你：係「需要」定「想要」？</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="needBtn" type="button" class="poke-btn py-1.5 rounded-xl border-2 border-blue-500 bg-blue-500 text-white font-black text-xs">📚 需要</button>
+            <button id="wantBtn" type="button" class="poke-btn py-1.5 rounded-xl border-2 border-slate-300 bg-white text-slate-700 font-black text-xs">🍭 想要</button>
+          </div>
+        </div>
+        <div id="incomeSaveSplitBox" class="bg-teal-50 border-2 border-teal-200 rounded-2xl p-2.5 flex items-center justify-between gap-2">
+          <span class="text-xs font-bold text-teal-900">伊貝秘訣：自動撥一半入儲錢罐？</span>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer bg-white px-2.5 py-1 rounded-xl border border-teal-300">
+            <input id="autoSaveToggle" type="checkbox" checked class="w-4 h-4 accent-teal-600" />
+            <span class="text-xs font-black text-teal-800">自動儲一半</span>
+          </label>
+        </div>
+        <button id="submitEntryBtn" type="button" class="poke-btn w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 text-white font-black text-base shadow">✨ 記低呢筆帳！(+10 XP)</button>
+      </section>
+
+      <section class="lg:col-span-5 glass-card rounded-3xl p-4">
+        <h2 class="text-lg font-black text-slate-900 mb-2">📊 我嘅金錢分佈</h2>
+        <div class="relative h-56 w-full">
+          <canvas id="moneyChart"></canvas>
+        </div>
+      </section>
+    </div>
+
+    <!-- 記帳紀錄 -->
+    <section class="glass-card rounded-3xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-black text-slate-900">📖 記帳紀錄簿</h2>
+        <div class="flex gap-1.5">
+          <button type="button" data-filter="all" class="filter-btn px-2.5 py-1 rounded-xl text-xs font-black bg-slate-800 text-white">全部</button>
+          <button type="button" data-filter="income" class="filter-btn px-2.5 py-1 rounded-xl text-xs font-black bg-slate-100 text-slate-700">➕ 收入</button>
+          <button type="button" data-filter="expense" class="filter-btn px-2.5 py-1 rounded-xl text-xs font-black bg-slate-100 text-slate-700">➖ 支出</button>
+        </div>
+      </div>
+      <div id="historyList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+    </section>
+  &lt;/div&gt;
+
+  &lt;!-- 編輯彈窗 --&gt;
+  &lt;div id=&quot;editModal&quot; class=&quot;fixed inset-0 z-50 hidden bg-slate-900/60 flex items-center justify-center p-4&quot;&gt;
+    &lt;div class=&quot;bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-3&quot;&gt;
+      &lt;h3 id=&quot;editModalTitle&quot; class=&quot;text-lg font-black text-slate-900&quot;&gt;修改設定&lt;/h3&gt;
+      &lt;div id=&quot;editModalBody&quot; class=&quot;space-y-2.5&quot;&gt;&lt;/div&gt;
+      &lt;div class=&quot;flex justify-end gap-2 pt-2&quot;&gt;
+        &lt;button id=&quot;cancelEditModalBtn&quot; type=&quot;button&quot; class=&quot;px-4 py-2 rounded-xl bg-slate-100 font-bold text-slate-700 text-sm&quot;&gt;取消&lt;/button&gt;
+        &lt;button id=&quot;saveEditModalBtn&quot; type=&quot;button&quot; class=&quot;px-4 py-2 rounded-xl bg-blue-600 text-white font-black text-sm&quot;&gt;儲存&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;script&gt;
+    const INCOME_CATS = [
+      { id: &#39;allowance&#39;, label: &#39;零用錢&#39;, emoji: &#39;💰&#39; },
+      { id: &#39;chores&#39;, label: &#39;做家務&#39;, emoji: &#39;🧹&#39; },
+      { id: &#39;reward&#39;, label: &#39;好表現獎勵&#39;, emoji: &#39;⭐&#39; },
+      { id: &#39;gift&#39;, label: &#39;利是/禮物&#39;, emoji: &#39;🧧&#39; }
+    ];
+    const EXPENSE_CATS = [
+      { id: &#39;snack&#39;, label: &#39;零食飲品&#39;, emoji: &#39;🍬&#39; },
+      { id: &#39;stationery&#39;, label: &#39;文具書本&#39;, emoji: &#39;✏️&#39; },
+      { id: &#39;toy&#39;, label: &#39;玩具卡牌&#39;, emoji: &#39;🎲&#39; },
+      { id: &#39;share&#39;, label: &#39;送禮物&#39;, emoji: &#39;🎁&#39; }
+    ];
+    const STORAGE_KEY = &#39;poke_gsites_savings_v1&#39;;
+    function getDefaultState() {
+      return {
+        trainerName: &#39;小智二世&#39;, xp: 35, wallet: 40, savings: 60,
+        goal: { name: &#39;Pokémon 卡牌禮盒&#39;, target: 120 },
+        transactions: [
+          { id: &#39;t1&#39;, type: &#39;income&#39;, amount: 50, cat: &#39;零用錢&#39;, emoji: &#39;💰&#39;, note: &#39;今個星期零用錢&#39;, savedPart: 25, needWant: null, date: &#39;今天&#39; },
+          { id: &#39;t2&#39;, type: &#39;expense&#39;, amount: 10, cat: &#39;文具書本&#39;, emoji: &#39;✏️&#39;, note: &#39;買靚靚擦膠&#39;, savedPart: 0, needWant: &#39;需要&#39;, date: &#39;昨天&#39; }
+        ]
+      };
+    }
+    let state = getDefaultState(), entryType = &#39;income&#39;, selectedCat = INCOME_CATS[0], needWantChoice = &#39;需要&#39;, currentFilter = &#39;all&#39;, chartInstance = null, editMode = null;
+    try { const s = localStorage.getItem(STORAGE_KEY); if (s) { const p = JSON.parse(s); if (p &amp;&amp; typeof p.wallet === &#39;number&#39;) state = p; } } catch (e) {}
+    function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
+    function showToast(msg) {
+      const t = document.getElementById(&#39;toast&#39;);
+      document.getElementById(&#39;toastText&#39;).textContent = msg;
+      t.classList.remove(&#39;hidden&#39;);
+      clearTimeout(window._tt);
+      window._tt = setTimeout(() =&gt; t.classList.add(&#39;hidden&#39;), 2600);
+    }
+    function renderCategories() {
+      const cats = entryType === &#39;income&#39; ? INCOME_CATS : EXPENSE_CATS;
+      const grid = document.getElementById(&#39;categoryGrid&#39;);
+      grid.innerHTML = &#39;&#39;;
+      cats.forEach(cat =&gt; {
+        const active = selectedCat &amp;&amp; selectedCat.id === cat.id;
+        const btn = document.createElement(&#39;button&#39;);
+        btn.type = &#39;button&#39;;
+        btn.className = `poke-btn p-2 rounded-2xl border-2 text-xs font-black flex flex-col items-center gap-0.5 ${active ? (entryType === &#39;income&#39; ? &#39;bg-emerald-500 text-white border-emerald-600&#39; : &#39;bg-rose-500 text-white border-rose-600&#39;) : &#39;bg-white text-slate-700 border-slate-200&#39;}`;
+        btn.innerHTML = `&lt;span class=&quot;text-lg&quot;&gt;${cat.emoji}&lt;/span&gt;&lt;span&gt;${cat.label}&lt;/span&gt;`;
+        btn.addEventListener(&#39;click&#39;, () =&gt; { selectedCat = cat; renderCategories(); });
+        grid.appendChild(btn);
+      });
+    }
+    function renderChart() {
+      const ctx = document.getElementById(&#39;moneyChart&#39;).getContext(&#39;2d&#39;);
+      const exp = state.transactions.filter(t =&gt; t.type === &#39;expense&#39;).reduce((a, b) =&gt; a + b.amount, 0);
+      const vals = [Math.max(0, state.savings), Math.max(0, state.wallet), Math.max(0, exp)];
+      const zero = vals.every(v =&gt; v === 0);
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: &#39;doughnut&#39;,
+        data: { labels: zero ? [&#39;未有紀錄&#39;] : [&#39;儲錢罐&#39;, &#39;零用錢&#39;, &#39;已支出&#39;], datasets: [{ data: zero ? [1] : vals, backgroundColor: zero ? [&#39;#e2e8f0&#39;] : [&#39;#14b8a6&#39;, &#39;#f59e0b&#39;, &#39;#f43f5e&#39;], borderWidth: 2, borderColor: &#39;#fff&#39; }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: &#39;bottom&#39; } } }
+      });
+    }
+    function renderAll() {
+      const lvl = Math.floor(state.xp / 100) + 1;
+      const inXp = state.xp % 100;
+      const badges = [&#39;紅白精靈球&#39;, &#39;超級球&#39;, &#39;高級球&#39;, &#39;大師球&#39;];
+      document.getElementById(&#39;trainerNameDisplay&#39;).textContent = state.trainerName;
+      document.getElementById(&#39;rankBadge&#39;).textContent = `Lv.${lvl} ${lvl &gt;= 4 ? &#39;儲錢大師&#39; : &#39;儲錢訓練員&#39;}`;
+      document.getElementById(&#39;badgeLabel&#39;).textContent = badges[Math.min(3, lvl - 1)];
+      document.getElementById(&#39;xpText&#39;).textContent = `${inXp} / 100 XP`;
+      document.getElementById(&#39;xpBar&#39;).style.width = `${inXp}%`;
+      document.getElementById(&#39;walletBalance&#39;).textContent = `$${state.wallet}`;
+      document.getElementById(&#39;savingsBalance&#39;).textContent = `$${state.savings}`;
+      document.getElementById(&#39;totalWealth&#39;).textContent = `$${state.wallet + state.savings}`;
+      document.getElementById(&#39;goalNameText&#39;).textContent = state.goal.name;
+      document.getElementById(&#39;goalTargetText&#39;).textContent = `$${state.goal.target}`;
+      const rem = Math.max(0, state.goal.target - state.savings);
+      document.getElementById(&#39;goalRemainingText&#39;).textContent = rem === 0 ? &#39;已達標！🎉&#39; : `$${rem}`;
+      const pct = state.goal.target &gt; 0 ? Math.min(100, Math.round((state.savings / state.goal.target) * 100)) : 0;
+      document.getElementById(&#39;goalProgressBar&#39;).style.width = `${Math.max(8, pct)}%`;
+      document.getElementById(&#39;goalPercentText&#39;).textContent = `${pct}%`;
+
+      const list = document.getElementById(&#39;historyList&#39;);
+      list.innerHTML = &#39;&#39;;
+      state.transactions.filter(t =&gt; currentFilter === &#39;all&#39; || t.type === currentFilter).forEach(t =&gt; {
+        const div = document.createElement(&#39;div&#39;);
+        div.className = &#39;flex items-center justify-between p-2.5 rounded-2xl bg-white border border-slate-200&#39;;
+        const inc = t.type === &#39;income&#39;;
+        div.innerHTML = `&lt;div class=&quot;flex items-center gap-2.5&quot;&gt;&lt;span class=&quot;text-lg&quot;&gt;${t.emoji}&lt;/span&gt;&lt;div&gt;&lt;div class=&quot;font-black text-sm&quot;&gt;${t.cat} ${t.needWant ? `&lt;span class=&quot;text-[11px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800&quot;&gt;${t.needWant}&lt;/span&gt;` : &#39;&#39;}&lt;/div&gt;&lt;div class=&quot;text-xs text-slate-500&quot;&gt;${t.note} · ${t.date}&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;flex items-center gap-2&quot;&gt;&lt;span class=&quot;font-black ${inc ? &#39;text-emerald-600&#39; : &#39;text-rose-600&#39;}&quot;&gt;${inc ? &#39;+&#39; : &#39;-&#39;}$${t.amount}&lt;/span&gt;&lt;button type=&quot;button&quot; class=&quot;del-btn text-xs text-slate-400 hover:text-rose-600&quot;&gt;刪除&lt;/button&gt;&lt;/div&gt;`;
+        div.querySelector(&#39;.del-btn&#39;).addEventListener(&#39;click&#39;, () =&gt; {
+          if (inc) { state.savings = Math.max(0, state.savings - (t.savedPart || 0)); state.wallet = Math.max(0, state.wallet - (t.amount - (t.savedPart || 0))); } else { state.wallet += t.amount; }
+          state.transactions = state.transactions.filter(x =&gt; x.id !== t.id);
+          saveState(); renderAll();
+        });
+        list.appendChild(div);
+      });
+      renderCategories(); renderChart();
+    }
+    document.getElementById(&#39;typeIncomeBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; {
+      entryType = &#39;income&#39;; selectedCat = INCOME_CATS[0];
+      document.getElementById(&#39;typeIncomeBtn&#39;).className = &#39;poke-btn py-2.5 rounded-2xl font-black text-sm border-2 border-emerald-500 bg-emerald-500 text-white&#39;;
+      document.getElementById(&#39;typeExpenseBtn&#39;).className = &#39;poke-btn py-2.5 rounded-2xl font-black text-sm border-2 border-slate-200 bg-slate-100 text-slate-700&#39;;
+      document.getElementById(&#39;needWantBox&#39;).classList.add(&#39;hidden&#39;);
+      document.getElementById(&#39;incomeSaveSplitBox&#39;).classList.remove(&#39;hidden&#39;);
+      renderCategories();
+    });
+    document.getElementById(&#39;typeExpenseBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; {
+      entryType = &#39;expense&#39;; selectedCat = EXPENSE_CATS[0];
+      document.getElementById(&#39;typeExpenseBtn&#39;).className = &#39;poke-btn py-2.5 rounded-2xl font-black text-sm border-2 border-rose-500 bg-rose-500 text-white&#39;;
+      document.getElementById(&#39;typeIncomeBtn&#39;).className = &#39;poke-btn py-2.5 rounded-2xl font-black text-sm border-2 border-slate-200 bg-slate-100 text-slate-700&#39;;
+      document.getElementById(&#39;needWantBox&#39;).classList.remove(&#39;hidden&#39;);
+      document.getElementById(&#39;incomeSaveSplitBox&#39;).classList.add(&#39;hidden&#39;);
+      renderCategories();
+    });
+    document.querySelectorAll(&#39;.quick-amt-btn&#39;).forEach(b =&gt; b.addEventListener(&#39;click&#39;, () =&gt; {
+      document.getElementById(&#39;amountInput&#39;).value = (Number(document.getElementById(&#39;amountInput&#39;).value) || 0) + Number(b.getAttribute(&#39;data-quick-amt&#39;));
+    }));
+    document.getElementById(&#39;needBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; { needWantChoice = &#39;需要&#39;; document.getElementById(&#39;needBtn&#39;).className = &#39;poke-btn py-1.5 rounded-xl border-2 border-blue-500 bg-blue-500 text-white font-black text-xs&#39;; document.getElementById(&#39;wantBtn&#39;).className = &#39;poke-btn py-1.5 rounded-xl border-2 border-slate-300 bg-white text-slate-700 font-black text-xs&#39;; });
+    document.getElementById(&#39;wantBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; { needWantChoice = &#39;想要&#39;; document.getElementById(&#39;wantBtn&#39;).className = &#39;poke-btn py-1.5 rounded-xl border-2 border-amber-500 bg-amber-500 text-white font-black text-xs&#39;; document.getElementById(&#39;needBtn&#39;).className = &#39;poke-btn py-1.5 rounded-xl border-2 border-slate-300 bg-white text-slate-700 font-black text-xs&#39;; });
+    document.getElementById(&#39;submitEntryBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; {
+      const amt = Math.round(Number(document.getElementById(&#39;amountInput&#39;).value));
+      const note = document.getElementById(&#39;noteInput&#39;).value.trim();
+      if (!amt || amt &lt;= 0) { showToast(&#39;請輸入大過 $0 嘅金額呀！&#39;); return; }
+      if (entryType === &#39;income&#39;) {
+        const sp = document.getElementById(&#39;autoSaveToggle&#39;).checked ? Math.floor(amt / 2) : 0;
+        state.savings += sp; state.wallet += (amt - sp); state.xp += 10;
+        state.transactions.unshift({ id: &#39;t_&#39; + Date.now(), type: &#39;income&#39;, amount: amt, cat: selectedCat.label, emoji: selectedCat.emoji, note: note || selectedCat.label, savedPart: sp, needWant: null, date: &#39;剛剛&#39; });
+        if (state.savings &gt;= state.goal.target &amp;&amp; typeof confetti === &#39;function&#39;) confetti({ particleCount: 60, spread: 60 });
+        showToast(sp &gt; 0 ? `記低 +$${amt}，自動存咗 $${sp} 入儲錢罐！` : `銀包收到 +$${amt}！`);
+      } else {
+        if (amt &gt; state.wallet) { showToast(`銀包得 $${state.wallet}，唔夠扣 $${amt}！`); return; }
+        state.wallet -= amt; state.xp += 10;
+        state.transactions.unshift({ id: &#39;t_&#39; + Date.now(), type: &#39;expense&#39;, amount: amt, cat: selectedCat.label, emoji: selectedCat.emoji, note: note || selectedCat.label, savedPart: 0, needWant: needWantChoice, date: &#39;剛剛&#39; });
+        showToast(`記低支出 -$${amt} (${needWantChoice})！`);
+      }
+      document.getElementById(&#39;amountInput&#39;).value = &#39;&#39;; document.getElementById(&#39;noteInput&#39;).value = &#39;&#39;;
+      saveState(); renderAll();
+    });
+    document.getElementById(&#39;transferToGoalBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; {
+      if (state.wallet &lt; 10) { showToast(&#39;銀包未夠 $10！&#39;); return; }
+      state.wallet -= 10; state.savings += 10; state.xp += 15;
+      if (state.savings &gt;= state.goal.target &amp;&amp; typeof confetti === &#39;function&#39;) confetti({ particleCount: 60, spread: 60 });
+      showToast(&#39;已存 $10 入儲錢罐！&#39;); saveState(); renderAll();
+    });
+    document.querySelectorAll(&#39;.filter-btn&#39;).forEach(b =&gt; b.addEventListener(&#39;click&#39;, () =&gt; {
+      currentFilter = b.getAttribute(&#39;data-filter&#39;);
+      document.querySelectorAll(&#39;.filter-btn&#39;).forEach(x =&gt; x.className = &#39;filter-btn px-2.5 py-1 rounded-xl text-xs font-black bg-slate-100 text-slate-700&#39;);
+      b.className = &#39;filter-btn px-2.5 py-1 rounded-xl text-xs font-black bg-slate-800 text-white&#39;;
+      renderAll();
+    }));
+    document.getElementById(&#39;resetDemoBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; { state = getDefaultState(); saveState(); renderAll(); showToast(&#39;已重設示範資料！&#39;); });
+    document.getElementById(&#39;editNameBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; {
+      editMode = &#39;name&#39;; document.getElementById(&#39;editModalTitle&#39;).textContent = &#39;更改訓練員名字&#39;;
+      document.getElementById(&#39;editModalBody&#39;).innerHTML = `&lt;input id=&quot;modalNameInput&quot; type=&quot;text&quot; maxlength=&quot;14&quot; value=&quot;${state.trainerName}&quot; class=&quot;w-full px-3 py-2 rounded-xl border-2 border-slate-300 font-bold&quot; /&gt;`;
+      document.getElementById(&#39;editModal&#39;).classList.remove(&#39;hidden&#39;);
+    });
+    document.getElementById(&#39;editGoalBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; {
+      editMode = &#39;goal&#39;; document.getElementById(&#39;editModalTitle&#39;).textContent = &#39;設定夢想寶物目標&#39;;
+      document.getElementById(&#39;editModalBody&#39;).innerHTML = `&lt;input id=&quot;modalGoalName&quot; type=&quot;text&quot; maxlength=&quot;20&quot; value=&quot;${state.goal.name}&quot; class=&quot;w-full px-3 py-2 rounded-xl border-2 border-slate-300 font-bold&quot; /&gt;&lt;input id=&quot;modalGoalTarget&quot; type=&quot;number&quot; min=&quot;10&quot; step=&quot;10&quot; value=&quot;${state.goal.target}&quot; class=&quot;w-full px-3 py-2 rounded-xl border-2 border-slate-300 font-bold&quot; /&gt;`;
+      document.getElementById(&#39;editModal&#39;).classList.remove(&#39;hidden&#39;);
+    });
+    document.getElementById(&#39;cancelEditModalBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; document.getElementById(&#39;editModal&#39;).classList.add(&#39;hidden&#39;));
+    document.getElementById(&#39;saveEditModalBtn&#39;).addEventListener(&#39;click&#39;, () =&gt; {
+      if (editMode === &#39;name&#39;) { const v = document.getElementById(&#39;modalNameInput&#39;).value.trim(); if (v) state.trainerName = v; }
+      else if (editMode === &#39;goal&#39;) { const n = document.getElementById(&#39;modalGoalName&#39;).value.trim(); const t = Math.max(10, Math.round(Number(document.getElementById(&#39;modalGoalTarget&#39;).value) || 100)); if (n) state.goal = { name: n, target: t }; }
+      saveState(); renderAll(); document.getElementById(&#39;editModal&#39;).classList.add(&#39;hidden&#39;);
+    });
+    renderAll();
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
